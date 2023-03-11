@@ -234,12 +234,17 @@ $app->POST('/labapi/api/v1/transfers/internal/control', function (Application $a
 
 $app->POST('/server-to-jwt/jwt', function (Application $app, Request $request) {
     try {
+        error_log('Got JWT Token request');
         $payload = Server2Jwt::verifySignature($request->getContent());
 
+        error_log('Validated JWT Token');
         $token = Server2Jwt::envelopSignature(json_decode($payload, true));
+
+        error_log('Generated JWT Token');
 
         $response = new Response($token['payload'], 200, array('Authorization' => ' Bearer ' . $token['jwt']));
     } catch (Exception $e) {
+        error_log('Got error : ' . $e->getMessage());
         $response = new Response($e->getMessage(), 401);
     }
 
