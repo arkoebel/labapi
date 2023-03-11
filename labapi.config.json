@@ -1,0 +1,115 @@
+{
+    "directDebitMatches":[
+        {
+            "comment": "Case 1",
+            "elements":[
+                {
+                    "jsonPath":"$..debtor.name",
+                    "value":"CPT DEB",
+                    "operator": "EQUALS"
+                },
+                {
+                    "jsonPath": "$..creditor.bic",
+                    "value": "BNPAFRPP",
+                    "operator": "CONTAINS"
+                },
+                {
+                    "jsonPath": "$..directDebitCategory",
+                    "operator": "EXISTS"
+                }
+            ],
+            "response":[
+                {"destJsonPath":"$.status", "value": "YES", "type": "VALUE"},
+                {"destJsonPath": "$","type" : "JSON", "value" : {"efsCode":"02","externalDirectDebitId":"alternate","messages":{"code":"XX","field":"00","message":"OK"},"status":"NONO"}},
+                {"destJsonPath":"$.messages", "type": "JSON", "value" : [{"code" : "00", "field" : "00", "message" : "OK"}]},
+                {"destJsonPath": "$.externalDirectDebitId", "srcJsonPath" : "$..externalDirectDebitId"}
+            ]
+        },
+        {
+            "comment": "Case 2",
+            "elements":[
+                {
+                    "jsonPath":"$..creditor.name",
+                    "value":"string",
+                    "operator": "EQUALS"
+                },
+                {
+                    "jsonPath": "$..debtor.bic",
+                    "value": "string",
+                    "operator": "EQUALS"
+                }
+            ],
+            "response":[
+                {"status": 400,
+                 "output" : "No value\n"}
+            ]
+        },
+        {
+            "comment": "Default",
+            "elements":[
+            ],
+            "response":[
+                {"status": 400},
+                {"destJsonPath":"$..status", "type": "VALUE", "value": "OK"},
+                {"destJsonPath":"$..messages", "type": "JSON", "value" : {"code" : "00", "field" : "Default", "message" : "OK"}},
+                {"destJsonPath": "$..externalTransferId", "srcJsonPath" : "$..externalTransferId"}
+            ]
+        }
+    ],
+    "transferMatches":[
+        {
+            "comment": "Case 1",
+            "elements":[
+                {
+                    "jsonPath":"$..debtor.name",
+                    "value":"CPT DEB",
+                    "operator": "EQUALS"
+                },
+                {
+                    "jsonPath": "$..creditor.bic",
+                    "value": "BNPAFRPP",
+                    "operator": "CONTAINS"
+                },
+                {
+                    "jsonPath": "$..directDebitCategoryx",
+                    "operator": "EXISTS"
+                }
+            ],
+            "response":[
+                {"destJsonPath":"$..status", "value": "YES", "type": "VALUE"},
+                {"destJsonPath":"$..messages[0]", "type": "JSON", "value" : {"code" : "00", "field" : "00", "message" : "OK"}},
+                {"destJsonPath": "$..externalTransferId", "srcJsonPath" : "$..externalTransferId"}
+            ]
+        },
+        {
+            "comment": "Case 2",
+            "elements":[
+                {
+                    "jsonPath":"$..creditor.name",
+                    "value":"string",
+                    "operator": "EQUALS"
+                },
+                {
+                    "jsonPath": "$..debtor.bic",
+                    "value": "string",
+                    "operator": "EQUALS"
+                }
+            ],
+            "response":[
+                {"status": 400,
+                 "output" : "No value"}
+            ]
+        },
+        {
+            "comment": "Default",
+            "elements":[
+            ],
+            "response":[
+                {"status": 400},
+                {"destJsonPath":"$..status", "type": "VALUE", "value": "OK"},
+                {"destJsonPath":"$..messages", "type": "JSON", "value" : {"code" : "00", "field" : "Default", "message" : "OK"}},
+                {"destJsonPath": "$..externalTransferId", "srcJsonPath" : "$..externalTransferId"}
+            ]
+        }
+    ]
+}

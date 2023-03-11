@@ -1,0 +1,17 @@
+{
+  "require": {
+    "silex/silex": "*",
+    "web-token/jwt-framework": "*",
+    "web-token/jwt-checker": "*",
+    "web-token/jwt-core": "*",
+    "php": ">=5.5",
+    "ext-curl": "*",
+    "ext-json": "*",
+    "ext-mbstring": "*",
+    "guzzlehttp/guzzle": "^6.2",
+    "galbar/jsonpath": "*"
+  },
+  "autoload": {
+      "psr-4": { "Swagger\\Server\\" : "lib/" }
+  }
+}
