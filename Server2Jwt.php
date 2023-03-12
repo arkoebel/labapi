@@ -19,7 +19,7 @@ use Jose\Component\Signature\JWSBuilder;
 class Server2Jwt
 {
 
-    public static function verifySignature($incomingJwt, $location = '.')
+    public static function verifySignature($incomingJwt, $location = '.', $style = 'server')
     {
         $config = json_decode(file_get_contents($location . '/server-to-jwt.config.json'), true);
         $keys = $config['clientCerts'];
@@ -45,25 +45,39 @@ class Server2Jwt
             ]
         );
 
-        $claimCheckerManager = new ClaimCheckerManager(
-            [
-                new Checker\IssuerChecker([$config['clientAppCN']])
-            ]
-        );
+        if('server' == $style)
+            $claimCheckerManager = new ClaimCheckerManager(
+                [
+                    new Checker\IssuerChecker([$config['clientAppCN']])
+                ]
+            );
+        else
+            $claimCheckerManager = new ClaimCheckerManager(
+                [
+                    new Checker\IssuerChecker(['Arkea'])
+                ]
+            );
 
-        $headerCheckerManager->check($jws, 0, ['alg', 'typ', 'kid']);
+        if('server' == $style)
+            $headerCheckerManager->check($jws, 0, ['alg', 'typ', 'kid']);
+        else
+            $headerCheckerManager->check($jws, 0, ['alg', 'typ']);
 
         $claims = json_decode($jws->getPayload(), true);
         $claimCheckerManager->check($claims, ['iss', 'etp', 'iat']);
 
-        $kid = $jws->getSignature(0)->getProtectedHeader()['kid'];
-        //error_log('Key Fingerprint: ' . $kid . "\n");
-        //error_log('Key: ' . $keys[$kid] . "\n");
-        if (!array_key_exists($kid, $keys))
-            throw new InvalidArgumentException("Key Identifier Unknown");
+        if('server' != $style){
+            error_log('Get Server Key ' . $config['serverCert']);
+            $jwk = JWKFactory::createFromKey($config['serverCert'],null,array('kty'=> 'RSA'));
+        }else{
+            $kid = $jws->getSignature(0)->getProtectedHeader()['kid'];
+            error_log('Key Fingerprint: ' . $kid . "\n");
+            //error_log('Key: ' . $keys[$kid] . "\n");
+            if (!array_key_exists($kid, $keys))
+                throw new InvalidArgumentException("Key Identifier Unknown");
 
-        $jwk = JWKFactory::createFromKey($keys[$kid], null, array('kty' => 'RSA'));
-
+            $jwk = JWKFactory::createFromKey($keys[$kid], null, array('kty' => 'RSA'));
+        }
         $algorithmManager = new AlgorithmManager([
             new RS256(),
         ]);
@@ -81,13 +95,15 @@ class Server2Jwt
     {
         $config = json_decode(file_get_contents('server-to-jwt.config.json'), true);
         unset($payload['iat']);
+        $origIssuer = $payload['iss'];
+        unset($payload['iss']);
         $data = json_encode(
             array_merge_recursive(
                 array(
                     "etp" => array(
                         "type" => "INTERNAL",
                         "tlv" => "PRIVATE",
-                        "consumerName" => $payload['iss']
+                        "consumerName" => $origIssuer
                     ),
                     "ver" => "2.0",
                     "codeacces" => "12345",
@@ -97,7 +113,7 @@ class Server2Jwt
                     "efs" => $payload['etp']['efs'],
                     "accescode" => "12345",
                     "orig" => array(
-                        "src" => "EXTERNAL_" . $payload['iss']
+                        "src" => "EXTERNAL_" . $origIssuer
                     ),
                     "si" => $payload['etp']['si'],
                     "accessCode" => "12345",

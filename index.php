@@ -75,12 +75,14 @@ function validateHeader($auth, &$response, &$auth_params)
         error_log('Auth: ' . $matches[1]);
         $jwt = $matches[1];
         try {
-            $auth_params = Server2Jwt::verifySignature($jwt);
+            $auth_params = Server2Jwt::verifySignature($jwt,'.','client');
             $auth_params = json_decode($auth_params, true);
             error_log('JWT = ' . print_r($auth_params, true));
             error_log('Verified JWT Token OK');
             return true;
         } catch (Exception $e) {
+            error_log('Bad Token : ' . $e->getMessage());
+            error_log($e->getTraceAsString());
             $response = new Response('Bad Token ' . $e->getMessage(), 401);
             return false;
         }
@@ -160,9 +162,9 @@ function buildResponse($resp, $jsonIn, &$jsonOut)
                     $jst->set($ob['destJsonPath'],(string) $zz[0]);
                 else
                     $jst->set($ob['destJsonPath'],$zz);
-                error_log('src=' . (string) $jstin->get($ob['srcJsonPath']));
+                error_log('src=' . print_r($jstin->get($ob['srcJsonPath']),true));
                 error_log('Replace ' . $ob['destJsonPath'] . ' with ' . $ob['srcJsonPath']);
-                error_log('json=' . (string) $jst);
+                error_log('json=' . print_r($jst, true));
             }
         } else if (array_key_exists('status', $ob)) {
             $rr = $ob['status'];
