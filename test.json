@@ -1,0 +1,32 @@
+[    {
+      "creditor": {
+        "addressCountry": "string",
+        "bic": "BNPAFRPP",
+        "iban": "string",
+        "name": "string",
+        "residentCountry": "string",
+        "tags": [
+          "string"
+        ],
+        "ultimate": "string"
+      },
+      "debtor": {
+        "addressCountry": "string",
+        "bic": "string",
+        "iban": "string",
+        "name": "CPT DEB",
+        "residentCountry": "string",
+        "tags": [
+          "string"
+        ],
+        "ultimate": "string"
+      },
+      "directDebitCategory": "string",
+      "directDebitICS": "string",
+      "directDebitType": "string",
+      "efsCodePSP": "string",
+      "endToEndId": "string",
+      "externalDirectDebitId": "string",
+      "remittanceInformation": "string"
+    }
+  ]
