@@ -23,7 +23,7 @@ class Server2Jwt
     {
         $config = json_decode(file_get_contents($location . '/server-to-jwt.config.json'), true);
         $keys = $config['clientCerts'];
-        //error_log('keys : ' . print_r($keys,true));
+        
         $serializerManager = new JWSSerializerManager([
             new CompactSerializer(),
         ]);
@@ -31,7 +31,7 @@ class Server2Jwt
         try{
 
             $jws = $serializerManager->unserialize($incomingJwt);
-            //error_log('jwt=' . print_r($jws,true));
+            
         }catch(Exception $e){
             error_log('oops: ' . $e->getMessage());
             throw new InvalidArgumentException('Bad JWT Format ' . $e->getMessage());
@@ -67,11 +67,11 @@ class Server2Jwt
         $claimCheckerManager->check($claims, ['iss', 'etp', 'iat']);
 
         if('server' != $style){
-            error_log('Get Server Key ' . $config['serverCert']);
+            //error_log('Get Server Key ' . $config['serverCert']);
             $jwk = JWKFactory::createFromKey($config['serverCert'],null,array('kty'=> 'RSA'));
         }else{
             $kid = $jws->getSignature(0)->getProtectedHeader()['kid'];
-            error_log('Key Fingerprint: ' . $kid . "\n");
+            //error_log('Key Fingerprint: ' . $kid . "\n");
             //error_log('Key: ' . $keys[$kid] . "\n");
             if (!array_key_exists($kid, $keys))
                 throw new InvalidArgumentException("Key Identifier Unknown");
