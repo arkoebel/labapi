@@ -1,10 +1,6 @@
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/Server2Jwt.php';
-//require_once __DIR__ . '/jsonpath-0.8.1.php';
-//require_once __DIR__ . '/json.php';
-//require_once __DIR__ . '/jsonstore-0.4.0.php';
-
 
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -72,12 +68,12 @@ function arrEq(array $a1, array $a2): bool
 function validateHeader($auth, &$response, &$auth_params)
 {
     if (preg_match('/Bearer (.*)/', $auth, $matches)) {
-        error_log('Auth: ' . $matches[1]);
+        error_log('Auth JWT : ' . $matches[1]);
         $jwt = $matches[1];
         try {
             $auth_params = Server2Jwt::verifySignature($jwt,'.','client');
             $auth_params = json_decode($auth_params, true);
-            error_log('JWT = ' . print_r($auth_params, true));
+            error_log('Decoded JWT = ' . print_r($auth_params, true));
             error_log('Verified JWT Token OK');
             return true;
         } catch (Exception $e) {
@@ -87,6 +83,7 @@ function validateHeader($auth, &$response, &$auth_params)
             return false;
         }
     } else {
+        error_log('Missing Auth');
         $response = new Response('Not Authorized', 401);
         return false;
     }
@@ -154,17 +151,17 @@ function buildResponse($resp, $jsonIn, &$jsonOut)
                     $val = $ob['value'];
                 $jst->set($ob['destJsonPath'], $val);
                 error_log('Replace ' . $ob['destJsonPath'] . ' with ' . json_encode($val));
-                error_log('json=' . (string) $jst);
+                //error_log('json=' . (string) $jst);
             }else if (array_key_exists('srcJsonPath', $ob)){
                 $zz = $jstin->get($ob['srcJsonPath']);
-                error_log('zz=' . print_r($zz,true));
+                //error_log('zz=' . print_r($zz,true));
                 if (is_array($zz))
                     $jst->set($ob['destJsonPath'],(string) $zz[0]);
                 else
                     $jst->set($ob['destJsonPath'],$zz);
                 error_log('src=' . print_r($jstin->get($ob['srcJsonPath']),true));
                 error_log('Replace ' . $ob['destJsonPath'] . ' with ' . $ob['srcJsonPath']);
-                error_log('json=' . print_r($jst, true));
+                //error_log('json=' . print_r($jst, true));
             }
         } else if (array_key_exists('status', $ob)) {
             $rr = $ob['status'];
@@ -189,6 +186,9 @@ function getAPIResponse($request,$dataType,$matchType){
 
     $input = $request->getContent();
     $json = json_decode($input);
+
+    if(!is_countable($json))
+        return new Response('Invalid Input (empty JSON)', 400);
 
     if (count($json) == 0)
         return new Response('Invalid Input (not JSON)', 400);
