@@ -203,7 +203,7 @@ function getAPIResponse($request,$dataType,$matchType){
 
     $response = new ControlResponse(array(
         'efs_code' => $jwt['etp']['efs'],
-        'external_direct_debit_id' => $map[0]->getExternalDirectDebitId(),
+      //  'external_direct_debit_id' => $map[0]->getExternalDirectDebitId(),
         'messages' => array("code"=>"0","field"=>"aa", "message"=>"bb"),
         'status' => 'OK'
     ));
@@ -237,14 +237,19 @@ $app->POST('/labapi/api/v1/transfers/internal/control', function (Application $a
 $app->POST('/server-to-jwt/jwt', function (Application $app, Request $request) {
     try {
         error_log('Got JWT Token request');
-        $payload = Server2Jwt::verifySignature($request->getContent());
+        $body = json_decode($request->getContent(),true);
+        if(($body===false)||!is_array($body) || !array_key_exists('jwt',$body))
+            $response = new Response('Body isn\'t JSON',400);
+        else{
+            $payload = Server2Jwt::verifySignature($body['jwt']);
 
-        error_log('Validated JWT Token');
-        $token = Server2Jwt::envelopSignature(json_decode($payload, true));
+            error_log('Validated JWT Token');
+            $token = Server2Jwt::envelopSignature(json_decode($payload, true));
 
-        error_log('Generated JWT Token');
+            error_log('Generated JWT Token');
 
-        $response = new Response($token['payload'], 200, array('Authorization' => ' Bearer ' . $token['jwt']));
+            $response = new Response($token['payload'], 200, array('Authorization' => ' Bearer ' . $token['jwt']));
+        }
     } catch (Exception $e) {
         error_log('Got error : ' . $e->getMessage());
         $response = new Response($e->getMessage(), 401);
