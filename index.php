@@ -2,22 +2,20 @@
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/Server2Jwt.php';
 
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
+use JsonPath\JsonObject;
 use Silex\Application;
 use Swagger\Server\Model\ControlResponse;
-
 use Swagger\Server\ObjectSerializer;
-use JsonPath\JsonObject;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 $app = new Silex\Application();
-
 
 function objEq(stdClass $obj1, stdClass $obj2): bool
 {
     //   error_log('new object call');
-    $a1 = (array)$obj1;
-    $a2 = (array)$obj2;
+    $a1 = (array) $obj1;
+    $a2 = (array) $obj2;
     return arrEq($a1, $a2);
 }
 
@@ -44,7 +42,7 @@ function arrEq(array $a1, array $a2): bool
                     return false;
                 }
             } else if (is_double($v)) {
-                // required to avoid rounding errors due to the 
+                // required to avoid rounding errors due to the
                 // conversion from string representation to double
                 if (abs($v - $a2[$k]) > 0.000000000001) {
                     error_log('different values for ' . $k . ' : ' . $v . '/' . $a2[$k]);
@@ -56,7 +54,7 @@ function arrEq(array $a1, array $a2): bool
                     return false;
                 }
             }
-        } else {
+        } elseif( $v!== null ) {
             error_log('key doesnt exist : ' . $k);
             return false;
         }
@@ -71,7 +69,7 @@ function validateHeader($auth, &$response, &$auth_params)
         error_log('Auth JWT : ' . $matches[1]);
         $jwt = $matches[1];
         try {
-            $auth_params = Server2Jwt::verifySignature($jwt,'.','client');
+            $auth_params = Server2Jwt::verifySignature($jwt, '.', 'client');
             $auth_params = json_decode($auth_params, true);
             error_log('Decoded JWT = ' . print_r($auth_params, true));
             error_log('Verified JWT Token OK');
@@ -91,81 +89,92 @@ function validateHeader($auth, &$response, &$auth_params)
 
 function getResp($config, $json, $type)
 {
-    $jobj = new JsonObject($json,true);
+    $jobj = new JsonObject($json, true);
     foreach ($config[$type] as $match) {
         $mm = true;
         error_log('Testing ' . $match['comment'] . "\n");
         foreach ($match['elements'] as $element) {
             $val = $jobj->get($element['jsonPath']);
-            
-            if ($val === null)
+
+            if ($val === null) {
                 break;
+            }
+
             if ('EQUALS' === $element['operator']) {
-                if ($val[0] === $element['value']){
-                    
+                if ($val[0] === $element['value']) {
+
                     error_log('JSONPath OK: ' . $element['jsonPath'] . ' = ' . $val[0] . "\n");
-                }else{
+                } else {
                     $mm = false;
                     error_log('JSONPath FAIL: ' . $element['jsonPath'] . ' != ' . $val[0] . "\n");
                     break;
                 }
             } else if ('CONTAINS' === $element['operator']) {
-                if (!(strstr($val[0], $element['value']) === false)){
+                if (!(strstr($val[0], $element['value']) === false)) {
                     error_log('JSONPath OK: ' . $element['jsonPath'] . ' includes ' . $val[0] . "\n");
-                }else{
+                } else {
                     $mm = false;
                     error_log('JSONPath FAIL: ' . $element['jsonPath'] . ' doesnt include ' . $val[0] . "\n");
                     break;
                 }
-            } else if('EXISTS' === $element['operator']){
-                if((count($val) != 0)){
+            } else if ('EXISTS' === $element['operator']) {
+                if ((count($val) != 0)) {
                     error_log('JSONPath OK: ' . $element['jsonPath'] . ' Exists' . "\n");
-                }else{
+                } else {
                     $mm = false;
                     error_log('JSONPath FAIL: ' . $element['jsonPath'] . ' doesnt exist' . "\n");
                     break;
                 }
             }
         }
-        if ($mm)
+        if ($mm) {
             return $match;
+        }
+
     }
     return null;
 }
 
 function buildResponse($resp, $jsonIn, &$jsonOut)
 {
-    $jst = new JsonObject($jsonOut,true);
-    $jstin = new JsonObject($jsonIn,true);
+    $jst = new JsonObject($jsonOut, true);
+    $jstin = new JsonObject($jsonIn, true);
     $rr = 200;
 
     error_log('json in =' . (string) $jstin);
-   
+
     foreach ($resp as $ob) {
-        if (array_key_exists('destJsonPath', $ob)) {
-            if (array_key_exists('value', $ob)){
-                if(array_key_exists('type',$ob)&&($ob['type']=='JSON')){
-                    $val = json_decode(json_encode($ob['value']),true);
+        if (array_key_exists('delayResponse', $ob)) {
+            $delay = $ob['delayResponse'];
+            sleep($delay);
+        } elseif (array_key_exists('destJsonPath', $ob)) {
+            if (array_key_exists('value', $ob)) {
+                if (array_key_exists('type', $ob) && ($ob['type'] == 'JSON')) {
+                    $val = json_decode(json_encode($ob['value']), true);
                     //$val = $ob['value'];
-                }else
+                } else {
                     $val = $ob['value'];
+                }
+
                 $jst->set($ob['destJsonPath'], $val);
                 error_log('Replace ' . $ob['destJsonPath'] . ' with ' . json_encode($val));
                 //error_log('json=' . (string) $jst);
-            }else if (array_key_exists('srcJsonPath', $ob)){
+            } elseif (array_key_exists('srcJsonPath', $ob)) {
                 $zz = $jstin->get($ob['srcJsonPath']);
                 //error_log('zz=' . print_r($zz,true));
-                if (is_array($zz))
-                    $jst->set($ob['destJsonPath'],(string) $zz[0]);
-                else
-                    $jst->set($ob['destJsonPath'],$zz);
-                error_log('src=' . print_r($jstin->get($ob['srcJsonPath']),true));
+                if (is_array($zz)) {
+                    $jst->set($ob['destJsonPath'], (string) $zz[0]);
+                } else {
+                    $jst->set($ob['destJsonPath'], $zz);
+                }
+
+                error_log('src=' . print_r($jstin->get($ob['srcJsonPath']), true));
                 error_log('Replace ' . $ob['destJsonPath'] . ' with ' . $ob['srcJsonPath']);
                 //error_log('json=' . print_r($jst, true));
             }
-        } else if (array_key_exists('status', $ob)) {
+        } elseif (array_key_exists('status', $ob)) {
             $rr = $ob['status'];
-            if (array_key_exists('output',$ob)){
+            if (array_key_exists('output', $ob)) {
                 $jsonOut = $ob['output'];
                 return $rr;
             }
@@ -175,72 +184,84 @@ function buildResponse($resp, $jsonIn, &$jsonOut)
     return $rr;
 }
 
-function getAPIResponse($request,$dataType,$matchType){
+function getAPIResponse($request, $dataType, $matchType)
+{
     $config = json_decode(file_get_contents('labapi.config.json'), true);
-    if ($config===null)
-        return new Response('Invalid configuration',500);
+    if ($config === null) {
+        return new Response('Invalid configuration', 500);
+    }
+
     $jwt = '';
     $resp = '';
-    if (!validateHeader($request->headers->get('Authorization'), $resp, $jwt))
-        return new Response('Invalid JWT',403);
+    if (!validateHeader($request->headers->get('Authorization'), $resp, $jwt)) {
+        return new Response('Invalid JWT', 403);
+    }
 
     $input = $request->getContent();
     $json = json_decode($input);
 
-    if(!is_countable($json))
+    if (!is_countable($json)) {
         return new Response('Invalid Input (empty JSON)', 400);
+    }
 
-    if (count($json) == 0)
+    if (count($json) == 0) {
         return new Response('Invalid Input (not JSON)', 400);
+    }
 
     $map = array();
-    foreach ($json as $element)
+    foreach ($json as $element) {
         $map[] = ObjectSerializer::deserialize($element, $dataType);
+    }
+
     $res = ObjectSerializer::sanitizeForSerialization($map);
 
-    if (!(arrEq($json, (Array) $res)))
+    if (!(arrEq($json, (Array) $res))) {
         return new Response('Invalid Input (invalid format)', 400);
+    }
 
     $response = new ControlResponse(array(
-        'efs_code' => $jwt['etp']['efs'],
-      //  'external_direct_debit_id' => $map[0]->getExternalDirectDebitId(),
-        'messages' => array("code"=>"0","field"=>"aa", "message"=>"bb"),
-        'status' => 'OK'
+        'efs_code' => (
+            ($jwt !==null) &&
+            (is_array($jwt)) &&
+            array_key_exists('etp',$jwt) &&
+            array_key_exists ('efs', $jwt['etp']))
+                ? $jwt['etp']['efs'] : '0',
+        //  'external_direct_debit_id' => $map[0]->getExternalDirectDebitId(),
+        'messages' => array("code" => "0", "field" => "aa", "message" => "bb"),
+        'status' => 'OK',
     ));
-    $rr = json_decode(json_encode(ObjectSerializer::sanitizeForSerialization($response)),true);
-    $jinput = json_decode($input,true);
+    $rr = json_decode(json_encode(ObjectSerializer::sanitizeForSerialization($response)), true);
+    $jinput = json_decode($input, true);
     $section = getResp($config, $jinput, $matchType);
     $ra = 0;
-    if (!($section === null)){
+    if (!($section === null)) {
         error_log('Selected section : ' . $section['comment'] . "\n");
-        
-        $ra = buildResponse($section['response'],$jinput, $rr);
+
+        $ra = buildResponse($section['response'], $jinput, $rr);
         $outr = $rr; //json_encode($rr);
-    }else{
+    } else {
         error_log("Default response: not found\n");
         $outr = "Default response: not found\n";
         $ra = 404;
     }
-    return new Response($outr,$ra);
+    return new Response($outr, $ra);
 }
 
 $app->POST('/labapi/api/v1/directDebits/internal/control', function (Application $app, Request $request) {
-    return getAPIResponse($request,'Swagger\Server\Model\InternalDirectDebit', 'directDebitMatches');
+    return getAPIResponse($request, 'Swagger\Server\Model\InternalDirectDebit', 'directDebitMatches');
 });
-
 
 $app->POST('/labapi/api/v1/transfers/internal/control', function (Application $app, Request $request) {
-    return getAPIResponse($request,'Swagger\Server\Model\InternalTransfer', 'transferMatches');
+    return getAPIResponse($request, 'Swagger\Server\Model\InternalTransfer', 'transferMatches');
 });
-
 
 $app->POST('/server-to-jwt/jwt', function (Application $app, Request $request) {
     try {
         error_log('Got JWT Token request');
-        $body = json_decode($request->getContent(),true);
-        if(($body===false)||!is_array($body) || !array_key_exists('jwt',$body))
-            $response = new Response('Body isn\'t JSON',400);
-        else{
+        $body = json_decode($request->getContent(), true);
+        if (($body === false) || !is_array($body) || !array_key_exists('jwt', $body)) {
+            $response = new Response('Body isn\'t JSON', 400);
+        } else {
             $payload = Server2Jwt::verifySignature($body['jwt']);
 
             error_log('Validated JWT Token');
@@ -257,6 +278,5 @@ $app->POST('/server-to-jwt/jwt', function (Application $app, Request $request) {
 
     return $response;
 });
-
 
 $app->run();
